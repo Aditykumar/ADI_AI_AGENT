@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: web/backend
     buildCommand: npm install && cd ../.. && npm install && cd web/backend && npx playwright install chromium || true
-    startCommand: npx playwright install chromium && node src/index.js
+    startCommand: cd ../.. && npx playwright install chromium && cd web/backend && node src/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
