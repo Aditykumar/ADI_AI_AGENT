@@ -59,6 +59,34 @@ async function discoverRoutes(baseUrl, opts = {}) {
     `);
   }
 
+  // ── Login with credentials before crawling ────────────────────────
+  if (auth.username && auth.password) {
+    const loginPage = await context.newPage();
+    const loginTarget = auth.loginUrl || base;
+    process.stdout.write(`  ↳ Logging in at ${loginTarget}…\n`);
+    try {
+      await loginPage.goto(loginTarget, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      const userField = await loginPage.$('input[type="email"], input[name="username"], input[name="email"], input[id*="email"], input[id*="user"], input[placeholder*="email" i], input[placeholder*="user" i]');
+      const passField = await loginPage.$('input[type="password"]');
+      if (userField && passField) {
+        await userField.fill(auth.username);
+        await passField.fill(auth.password);
+        const submitBtn = await loginPage.$('button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Sign in")');
+        if (submitBtn) {
+          await Promise.all([
+            loginPage.waitForNavigation({ timeout: 15000 }).catch(() => {}),
+            submitBtn.click(),
+          ]);
+          process.stdout.write(`  ↳ Login submitted — now at: ${loginPage.url()}\n`);
+        }
+      }
+      await loginPage.close();
+    } catch (e) {
+      process.stdout.write(`  ↳ Login attempt failed: ${e.message}\n`);
+      await loginPage.close();
+    }
+  }
+
   const visited    = new Set();
   const apiSeen    = new Set();
   const queue      = [];  // { url, depth }

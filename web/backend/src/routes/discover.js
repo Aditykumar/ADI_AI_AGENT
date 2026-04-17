@@ -19,7 +19,12 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const discovery = await discoverRoutes(url, {
       verbose: false,
-      auth: { token: auth.token || '' },
+      auth: {
+        token:    auth.token    || '',
+        username: auth.username || '',
+        password: auth.password || '',
+        loginUrl: auth.loginUrl || '',
+      },
     });
 
     res.json({
