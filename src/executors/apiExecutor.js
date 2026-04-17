@@ -12,7 +12,8 @@ const axios = require('axios');
  * @returns {Promise<object[]>}
  */
 async function runAPITests(plan, opts) {
-  const { apiBaseUrl, apiKey, auth } = opts;
+  const { apiBaseUrl, apiKey, auth, emitAction } = opts;
+  const emit = emitAction || (() => {});
   const results = [];
 
   const apiTests = plan.api_tests || [];
@@ -37,12 +38,15 @@ async function runAPITests(plan, opts) {
     };
 
     const t0 = Date.now();
+    emit('api_call', { method: test.method, url: `${apiBaseUrl}${test.endpoint}`, name: test.name });
 
     try {
       await runSingleAPITest(test, apiBaseUrl, defaultHeaders, auth, result);
+      emit('api_result', { method: test.method, url: `${apiBaseUrl}${test.endpoint}`, status: result.http_status, result: result.status });
     } catch (err) {
       result.status = 'fail';
       result.error  = err.message;
+      emit('api_result', { method: test.method, url: `${apiBaseUrl}${test.endpoint}`, error: err.message, result: 'fail' });
     }
 
     result.duration_ms = Date.now() - t0;

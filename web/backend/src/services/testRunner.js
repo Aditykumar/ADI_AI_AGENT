@@ -56,6 +56,9 @@ async function runTests(params) {
     updateRun(runId, { phase, progress });
   };
 
+  // Live browser action emitter — sends screenshots + action logs to frontend
+  const emitAction = (type, data) => sendSSE(runId, 'action', { type, ...data, ts: Date.now() });
+
   const reportsDir    = path.resolve(process.env.REPORTS_DIR    || './data/reports');
   const screenshotsDir = path.resolve(process.env.SCREENSHOTS_DIR || './data/screenshots');
   fs.mkdirSync(reportsDir,     { recursive: true });
@@ -102,7 +105,7 @@ async function runTests(params) {
           const pct = 20 + Math.floor((i / targets.length) * 20);
           emit('ui', `UI test: ${t.path || t.url}`, pct);
 
-          const results = await runUITests(plan, { targetUrl: t.url || targetUrl, auth: authOpts });
+          const results = await runUITests(plan, { targetUrl: t.url || targetUrl, auth: authOpts, emitAction });
           rawResults.ui.push(...results);
         }
         emit('ui', `UI done — ${rawResults.ui.filter(r => r.status === 'pass').length} pass`, 40);
@@ -120,6 +123,7 @@ async function runTests(params) {
           apiBaseUrl: apiUrl || targetUrl,
           apiKey:     authOpts.apiKey || '',
           auth:       authOpts,
+          emitAction,
         });
         emit('api', `API done — ${rawResults.api.filter(r => r.status === 'pass').length} pass`, 60);
       } catch (e) {
@@ -161,6 +165,7 @@ async function runTests(params) {
           apiBaseUrl:  apiUrl || targetUrl,
           apiKey:      authOpts.apiKey || '',
           auth:        authOpts,
+          emitAction,
         });
         const fails = rawResults.security.filter(r => r.status === 'fail').length;
         emit('security', `Security done — ${fails} issue(s) found`, 90);

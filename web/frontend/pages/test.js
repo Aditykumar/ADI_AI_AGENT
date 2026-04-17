@@ -63,12 +63,18 @@ function TestPage() {
   const [selected,    setSelected]    = useState({ pages: {}, api: {} }); // id→bool
 
   // Run step
-  const [running,   setRunning]   = useState(false);
-  const [progress,  setProgress]  = useState(0);
-  const [phase,     setPhase]     = useState('');
-  const [logs,      setLogs]      = useState([]);
-  const [reportId,  setReportId]  = useState(null);
-  const logRef = useRef(null);
+  const [running,    setRunning]    = useState(false);
+  const [progress,   setProgress]   = useState(0);
+  const [phase,      setPhase]      = useState('');
+  const [logs,       setLogs]       = useState([]);
+  const [reportId,   setReportId]   = useState(null);
+  const [liveScreen, setLiveScreen] = useState(null);   // base64 screenshot
+  const [liveUrl,    setLiveUrl]    = useState('');
+  const [liveLabel,  setLiveLabel]  = useState('');
+  const [actions,    setActions]    = useState([]);     // live action feed
+  const [networks,   setNetworks]   = useState([]);     // network calls
+  const logRef    = useRef(null);
+  const actionRef = useRef(null);
 
   // ── Discover routes ─────────────────────────────────────────────────
   async function handleDiscover(e) {
@@ -133,6 +139,50 @@ function TestPage() {
         setTimeout(() => logRef.current?.scrollTo(0, 99999), 50);
         return next;
       });
+    });
+
+    source.addEventListener('action', e => {
+      const d = JSON.parse(e.data);
+
+      // Live screenshot update
+      if (d.type === 'screenshot' && d.img) {
+        setLiveScreen(d.img);
+        setLiveUrl(d.url || '');
+        setLiveLabel(d.label || '');
+      }
+
+      // Navigate event
+      if (d.type === 'navigate') {
+        setLiveUrl(d.url || '');
+        setActions(a => {
+          const next = [{ type: 'navigate', text: `→ ${d.url}`, ts: d.ts }, ...a].slice(0, 100);
+          setTimeout(() => actionRef.current?.scrollTo(0, 0), 30);
+          return next;
+        });
+      }
+
+      // Test start/done
+      if (d.type === 'test_start') {
+        setActions(a => [{ type: 'test', text: `▶ ${d.name}`, ts: d.ts }, ...a].slice(0, 100));
+      }
+      if (d.type === 'test_done') {
+        const icon = d.status === 'pass' ? '✓' : d.status === 'fail' ? '✗' : '~';
+        setActions(a => [{ type: d.status, text: `${icon} ${d.name} (${d.duration_ms}ms)`, ts: d.ts }, ...a].slice(0, 100));
+      }
+
+      // API calls
+      if (d.type === 'api_call') {
+        setActions(a => [{ type: 'api', text: `${d.method} ${d.url}`, ts: d.ts }, ...a].slice(0, 100));
+      }
+      if (d.type === 'api_result') {
+        const icon = d.result === 'pass' ? '✓' : '✗';
+        setActions(a => [{ type: d.result, text: `${icon} ${d.method} ${d.url} → ${d.status || d.error}`, ts: d.ts }, ...a].slice(0, 100));
+      }
+
+      // Network calls
+      if (d.type === 'network' && d.type !== 'response') {
+        setNetworks(n => [{ method: d.method, url: d.url, status: d.status, ts: d.ts }, ...n].slice(0, 50));
+      }
     });
 
     source.addEventListener('complete', e => {
@@ -372,32 +422,122 @@ function TestPage() {
 
         {/* ── STEP 3: Running ────────────────────────────────────── */}
         {step === 'run' && (
-          <div className="space-y-5">
-            <div className="bg-surface border border-border rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white">Running Tests…</h2>
+          <div className="space-y-4">
+
+            {/* Progress bar */}
+            <div className="bg-surface border border-border rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white">
+                  Phase: <span className="text-accent">{phase || 'starting…'}</span>
+                </span>
                 <span className="text-accent font-bold">{progress}%</span>
               </div>
-
-              {/* Progress bar */}
-              <div className="h-2 bg-bg rounded-full overflow-hidden mb-4">
+              <div className="h-2 bg-bg rounded-full overflow-hidden">
                 <div className="h-full bg-accent rounded-full transition-all duration-500"
                   style={{ width: `${progress}%` }} />
               </div>
+            </div>
 
-              <div className="text-sm text-muted mb-4">
-                Phase: <span className="text-white font-medium">{phase || 'starting'}</span>
+            {/* Live browser view */}
+            <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+              {/* Browser chrome bar */}
+              <div className="bg-[#1a1f2e] border-b border-border px-4 py-2 flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                </div>
+                <div className="flex-1 bg-bg rounded-lg px-3 py-1 text-xs text-muted font-mono truncate">
+                  {liveUrl || url || 'waiting for browser…'}
+                </div>
+                {liveScreen && (
+                  <span className="text-xs text-green-400 animate-pulse">● LIVE</span>
+                )}
               </div>
 
-              {/* Log */}
-              <div ref={logRef}
-                className="bg-bg rounded-xl p-4 h-64 overflow-y-auto space-y-1 font-mono text-xs">
+              {/* Screenshot / placeholder */}
+              <div className="relative bg-[#0d1117]" style={{ minHeight: '360px' }}>
+                {liveScreen ? (
+                  <img
+                    src={`data:image/png;base64,${liveScreen}`}
+                    alt={liveLabel}
+                    className="w-full object-contain"
+                    style={{ maxHeight: '480px' }}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full py-20 text-muted">
+                    <div className="text-4xl mb-3 animate-pulse">🌐</div>
+                    <p className="text-sm">Browser starting…</p>
+                    <p className="text-xs mt-1 text-muted/50">Screenshots will appear here</p>
+                  </div>
+                )}
+                {liveLabel && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-3 py-1.5 text-xs text-white truncate">
+                    {liveLabel}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions + Network side by side */}
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* Action log */}
+              <div className="bg-surface border border-border rounded-2xl p-4">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">
+                  🎬 Actions
+                </h3>
+                <div ref={actionRef} className="space-y-1 h-48 overflow-y-auto">
+                  {actions.length === 0
+                    ? <span className="text-muted text-xs animate-pulse">Waiting…</span>
+                    : actions.map((a, i) => (
+                      <div key={i} className={`text-xs font-mono truncate ${
+                        a.type === 'pass'     ? 'text-green-400' :
+                        a.type === 'fail'     ? 'text-red-400' :
+                        a.type === 'navigate' ? 'text-blue-400' :
+                        a.type === 'api'      ? 'text-yellow-400' :
+                        a.type === 'test'     ? 'text-white' : 'text-muted'
+                      }`}>{a.text}</div>
+                    ))
+                  }
+                </div>
+              </div>
+
+              {/* Network calls */}
+              <div className="bg-surface border border-border rounded-2xl p-4">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">
+                  🌐 Network
+                </h3>
+                <div className="space-y-1 h-48 overflow-y-auto">
+                  {networks.length === 0
+                    ? <span className="text-muted text-xs animate-pulse">No requests yet…</span>
+                    : networks.map((n, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs font-mono">
+                        <span className={`flex-shrink-0 font-bold ${
+                          n.method === 'GET'    ? 'text-green-400' :
+                          n.method === 'POST'   ? 'text-blue-400' :
+                          n.method === 'DELETE' ? 'text-red-400'  : 'text-yellow-400'
+                        }`}>{n.method}</span>
+                        <span className="text-muted truncate">{n.url?.replace(/https?:\/\/[^/]+/, '')}</span>
+                        {n.status && <span className={`flex-shrink-0 ${n.status < 400 ? 'text-green-400' : 'text-red-400'}`}>{n.status}</span>}
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+
+            {/* Progress log */}
+            <div className="bg-surface border border-border rounded-2xl p-4">
+              <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">📋 Log</h3>
+              <div ref={logRef} className="bg-bg rounded-xl p-3 h-36 overflow-y-auto space-y-1 font-mono text-xs">
                 {logs.length === 0
                   ? <span className="text-muted animate-pulse">Initializing…</span>
                   : logs.map((l, i) => <LogLine key={i} msg={l} />)
                 }
               </div>
             </div>
+
           </div>
         )}
 

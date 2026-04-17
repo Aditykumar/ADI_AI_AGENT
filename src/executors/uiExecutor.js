@@ -18,7 +18,10 @@ fs.mkdirSync(cfg.output.screenshotsDir, { recursive: true });
  * @returns {Promise<object[]>} Array of test results
  */
 async function runUITests(plan, opts) {
-  const { targetUrl, auth } = opts;
+  const { targetUrl, auth, emitAction } = opts;
+  const emit = emitAction || (() => {});
+  // Make emit accessible inside page event handlers
+  global.__currentEmit = emit;
   const results = [];
 
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
@@ -39,6 +42,23 @@ async function runUITests(plan, opts) {
   const consoleErrors = [];
   page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
 
+  // ── Live action tracking ─────────────────────────────────────────────────
+  page.on('request', req => {
+    if (['xhr','fetch'].includes(req.resourceType())) {
+      emit('network', { method: req.method(), url: req.url(), type: 'request' });
+    }
+  });
+  page.on('response', res => {
+    if (['xhr','fetch'].includes(res.request().resourceType())) {
+      emit('network', { method: res.request().method(), url: res.url(), status: res.status(), type: 'response' });
+    }
+  });
+  page.on('framenavigated', frame => {
+    if (frame === page.mainFrame()) {
+      emit('navigate', { url: frame.url() });
+    }
+  });
+
   // ── Run each UI test ───────────────────────────────────────────────────────
   const allTests = [...(plan.ui_tests || []), ...(plan.sso_tests || [])];
 
@@ -55,18 +75,29 @@ async function runUITests(plan, opts) {
     };
 
     const t0 = Date.now();
+    emit('test_start', { id: test.id, name: test.name, type: result.type });
 
     try {
       await runSingleUITest(page, test, targetUrl, auth, result, context);
+      // Screenshot after each test
+      try {
+        const buf = await page.screenshot({ fullPage: false });
+        emit('screenshot', { label: test.name, url: page.url(), img: buf.toString('base64') });
+      } catch (_) {}
     } catch (err) {
       result.status = 'fail';
       result.error  = err.message;
-      // Screenshot on failure
       const shot = path.join(cfg.output.screenshotsDir, `${test.id}_fail.png`);
-      try { await page.screenshot({ path: shot, fullPage: true }); result.screenshots.push(shot); } catch (_) {}
+      try {
+        await page.screenshot({ path: shot, fullPage: true });
+        result.screenshots.push(shot);
+        const buf = await page.screenshot({ fullPage: false });
+        emit('screenshot', { label: `FAIL: ${test.name}`, url: page.url(), img: buf.toString('base64') });
+      } catch (_) {}
     }
 
     result.duration_ms = Date.now() - t0;
+    emit('test_done', { id: test.id, name: test.name, status: result.status, duration_ms: result.duration_ms });
     results.push(result);
   }
 
@@ -150,12 +181,10 @@ async function testPageLoad(page, url, result) {
     throw new Error(`Page returned HTTP ${status}`);
   }
 
-  // Check title
   const title = await page.title();
   result.details.push(`Title: "${title}"`);
   if (!title) result.details.push('Warning: Empty page title');
 
-  // Check body has content
   const bodyText = await page.$eval('body', el => el.innerText.length);
   result.details.push(`Body text length: ${bodyText} chars`);
   if (bodyText < 10) throw new Error('Page body appears empty');
