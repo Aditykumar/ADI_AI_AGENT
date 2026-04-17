@@ -49,6 +49,13 @@ function TestPage() {
   const [skipAI,  setSkipAI]  = useState(false);
   const [testTypes, setTestTypes] = useState({ ui: true, api: true, perf: true, security: true });
 
+  // Auth for target site
+  const [showAuth,   setShowAuth]   = useState(false);
+  const [loginUrl,   setLoginUrl]   = useState('');
+  const [authUser,   setAuthUser]   = useState('');
+  const [authPass,   setAuthPass]   = useState('');
+  const [authToken,  setAuthToken]  = useState('');
+
   // Discover step
   const [discovering, setDiscovering] = useState(false);
   const [discovery,   setDiscovery]   = useState(null);
@@ -68,8 +75,9 @@ function TestPage() {
     e.preventDefault();
     if (!url) return toast.error('Enter a URL');
     setDiscovering(true);
+    const authOpts = showAuth ? { loginUrl, username: authUser, password: authPass, token: authToken } : {};
     try {
-      const { data } = await api.post('/api/discover', { url });
+      const { data } = await api.post('/api/discover', { url, auth: authOpts });
       setDiscovery(data);
       // Pre-select all
       const pages = {}, apiR = {};
@@ -95,10 +103,12 @@ function TestPage() {
     setProgress(5);
 
     try {
+      const authOpts = showAuth ? { loginUrl, username: authUser, password: authPass, token: authToken } : {};
       const { data } = await api.post('/api/test/start', {
         targetUrl: url, apiUrl: apiUrl || url,
         selectedPages, selectedApiRoutes,
         testTypes, skipAI,
+        auth: authOpts,
       });
 
       setReportId(data.reportId);
@@ -234,6 +244,50 @@ function TestPage() {
                   className="accent-indigo-500 w-4 h-4" />
                 Skip AI (use built-in test plan — faster)
               </label>
+
+              {/* Auth section */}
+              <div className="border-t border-border pt-4">
+                <button type="button" onClick={() => setShowAuth(a => !a)}
+                  className="flex items-center gap-2 text-sm text-muted hover:text-white transition">
+                  <span>{showAuth ? '▼' : '▶'}</span>
+                  🔐 Site requires login? <span className="text-accent text-xs">(optional)</span>
+                </button>
+
+                {showAuth && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="block text-xs text-muted mb-1">Login Page URL</label>
+                      <input value={loginUrl} onChange={e => setLoginUrl(e.target.value)}
+                        placeholder="https://yoursite.com/login"
+                        className="w-full bg-bg border border-border rounded-xl px-4 py-2 text-white text-sm
+                                   placeholder-muted/50 focus:outline-none focus:border-accent" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-muted mb-1">Username / Email</label>
+                        <input value={authUser} onChange={e => setAuthUser(e.target.value)}
+                          placeholder="admin@yoursite.com"
+                          className="w-full bg-bg border border-border rounded-xl px-4 py-2 text-white text-sm
+                                     placeholder-muted/50 focus:outline-none focus:border-accent" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted mb-1">Password</label>
+                        <input type="password" value={authPass} onChange={e => setAuthPass(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full bg-bg border border-border rounded-xl px-4 py-2 text-white text-sm
+                                     placeholder-muted/50 focus:outline-none focus:border-accent" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted mb-1">Bearer Token <span className="text-muted/60">(if already have one)</span></label>
+                      <input value={authToken} onChange={e => setAuthToken(e.target.value)}
+                        placeholder="eyJhbGci..."
+                        className="w-full bg-bg border border-border rounded-xl px-4 py-2 text-white text-sm
+                                   placeholder-muted/50 focus:outline-none focus:border-accent" />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button type="submit" disabled={discovering}
