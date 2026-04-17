@@ -69,6 +69,10 @@ function Dashboard() {
           <span className="text-muted text-sm">
             {user?.name} <span className="text-xs bg-border px-2 py-0.5 rounded-full ml-1">{user?.role}</span>
           </span>
+          <Link href="/ai-agent"
+            className="bg-purple-600 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition">
+            🧠 AI Agent
+          </Link>
           <Link href="/test"
             className="bg-accent hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-xl transition">
             + New Test

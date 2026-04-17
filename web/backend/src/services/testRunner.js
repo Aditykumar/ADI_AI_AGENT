@@ -253,4 +253,4 @@ function errResult(id, name, err) {
   return { id, name, type: 'error', status: 'error', error: err.message, details: [], duration_ms: 0 };
 }
 
-module.exports = { runTests, addSSEClient, removeSSEClient };
+module.exports = { runTests, addSSEClient, removeSSEClient, sendSSE };

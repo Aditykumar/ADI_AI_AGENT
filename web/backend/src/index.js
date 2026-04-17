@@ -10,6 +10,7 @@ const authRoutes     = require('./routes/auth');
 const discoverRoutes = require('./routes/discover');
 const testRoutes     = require('./routes/test');
 const reportRoutes   = require('./routes/reports');
+const aiRunRoutes    = require('./routes/ai-run');
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
@@ -39,6 +40,7 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/discover', discoverRoutes);
 app.use('/api/test',     testRoutes);
 app.use('/api/reports',  reportRoutes);
+app.use('/api/ai-run',   aiRunRoutes);
 
 // ── Health ─────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({
