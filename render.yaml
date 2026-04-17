@@ -3,7 +3,7 @@ services:
     name: ai-testing-agent-backend
     runtime: node
     rootDir: web/backend
-    buildCommand: npm install && node ../../node_modules/playwright/cli.js install chromium || true
+    buildCommand: npm install && npx playwright install chromium || true
     startCommand: node src/index.js
     healthCheckPath: /health
     envVars:
