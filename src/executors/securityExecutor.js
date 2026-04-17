@@ -8,6 +8,10 @@ const https = require('https');
 const tls   = require('tls');
 const url   = require('url');
 
+// Short timeout for all security HTTP probes
+const SEC_AXIOS = axios.create({ timeout: 6000, validateStatus: () => true,
+  httpsAgent: new https.Agent({ rejectUnauthorized: false }) });
+
 const SECURITY_HEADERS = [
   { name: 'Strict-Transport-Security',  severity: 'high',   desc: 'HSTS — forces HTTPS' },
   { name: 'Content-Security-Policy',    severity: 'high',   desc: 'CSP — prevents XSS' },
@@ -493,7 +497,7 @@ async function checkRateLimitOnAuth(apiBaseUrl, results) {
   const t0 = Date.now();
 
   const loginUrl = `${apiBaseUrl}/api/auth/login`;
-  const ATTEMPTS = 15;
+  const ATTEMPTS = 5;
   const statuses = [];
 
   try {
@@ -540,7 +544,7 @@ async function get(url, extraHeaders = {}, extraOpts = {}) {
       ...extraHeaders,
     },
     validateStatus: () => true,
-    timeout: extraOpts.timeout || 15000,
+    timeout: extraOpts.timeout || 5000,
     httpsAgent: new (require('https').Agent)({ rejectUnauthorized: false }),
   });
 }

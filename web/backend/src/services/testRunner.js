@@ -160,18 +160,24 @@ async function runTests(params) {
     if (testTypes.security) {
       emit('security', 'Running security tests…', 78);
       try {
-        rawResults.security = await runSecurityTests(plan, {
-          targetUrl,
-          apiBaseUrl:  apiUrl || targetUrl,
-          apiKey:      authOpts.apiKey || '',
-          auth:        authOpts,
-          emitAction,
-        });
+        const SECURITY_TIMEOUT = 90000; // 90s max
+        rawResults.security = await Promise.race([
+          runSecurityTests(plan, {
+            targetUrl,
+            apiBaseUrl:  apiUrl || targetUrl,
+            apiKey:      authOpts.apiKey || '',
+            auth:        authOpts,
+            emitAction,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Security phase timed out after 90s')), SECURITY_TIMEOUT)
+          ),
+        ]);
         const fails = rawResults.security.filter(r => r.status === 'fail').length;
         emit('security', `Security done — ${fails} issue(s) found`, 90);
       } catch (e) {
-        emit('security', `Security error: ${e.message}`, 90);
-        rawResults.security.push(errResult('sec-err', 'Security Error', e));
+        emit('security', `Security: ${e.message}`, 90);
+        rawResults.security.push(errResult('sec-timeout', 'Security Timeout', e));
       }
     }
 
