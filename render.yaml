@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: web/backend
     buildCommand: npm install && cd ../.. && npm install --legacy-peer-deps && cd web/backend
-    startCommand: node src/index.js
+    startCommand: cd ../.. && npx playwright install chromium || true && cd web/backend && node src/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
