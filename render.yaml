@@ -18,20 +18,16 @@ services:
       - key: JWT_EXPIRES_IN
         value: 24h
       - key: AI_PROVIDER
-        value: groq           # groq = free cloud AI
+        value: groq
       - key: GROQ_API_KEY
         sync: false           # paste your free Groq key in Render dashboard
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
       - key: DB_PATH
-        value: /var/data/db.sqlite
+        value: /tmp/data/db.json
       - key: REPORTS_DIR
-        value: /var/data/reports
+        value: /tmp/data/reports
       - key: SCREENSHOTS_DIR
-        value: /var/data/screenshots
+        value: /tmp/data/screenshots
       - key: MAX_REPORTS_PER_USER
         value: 10
-    disk:
-      name: data
-      mountPath: /var/data
-      sizeGB: 1               # 1 GB free persistent disk on Render
