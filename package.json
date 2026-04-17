@@ -1,0 +1,33 @@
+{
+  "name": "ai-testing-agent",
+  "version": "1.0.0",
+  "description": "AI-powered comprehensive testing agent — UI, API, Performance & Security",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "install:browsers": "npx playwright install chromium",
+    "test:ui": "node src/index.js --ui-only",
+    "test:api": "node src/index.js --api-only",
+    "test:perf": "node src/index.js --perf-only",
+    "test:security": "node src/index.js --security-only"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "axios": "^1.6.2",
+    "chalk": "^4.1.2",
+    "cheerio": "^1.0.0-rc.12",
+    "chrome-launcher": "^1.1.2",
+    "commander": "^11.1.0",
+    "dayjs": "^1.11.10",
+    "dotenv": "^16.3.1",
+    "groq-sdk": "^1.1.2",
+    "inquirer": "^8.2.7",
+    "lighthouse": "^11.4.0",
+    "node-html-parser": "^6.1.12",
+    "ollama": "^0.5.1",
+    "openai": "^4.24.0",
+    "ora": "^5.4.1",
+    "playwright": "^1.40.0",
+    "uuid": "^9.0.0"
+  }
+}

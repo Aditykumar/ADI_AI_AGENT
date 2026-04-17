@@ -1,0 +1,48 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║   AI Testing Agent — Docker Compose (Ollama alternative)    ║
+# ║                                                              ║
+# ║   Use this if you prefer Docker over native Ollama install   ║
+# ║                                                              ║
+# ║   Start:   docker compose up -d                             ║
+# ║   Pull:    docker compose exec ollama ollama pull llama3.2  ║
+# ║   Stop:    docker compose down                              ║
+# ╚══════════════════════════════════════════════════════════════╝
+version: '3.9'
+
+services:
+
+  # ── Ollama (local LLaMA server) ─────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Model auto-pull sidecar ─────────────────────────────────────────
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "OLLAMA_HOST=http://ollama:11434 ollama pull llama3.2 &&
+             echo '✅ Model llama3.2 ready'"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    restart: "no"
+
+volumes:
+  ollama_data:
+    driver: local
