@@ -1,6 +1,6 @@
 'use strict';
 const express  = require('express');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAuthQuery } = require('../middleware/auth');
 const { getReportsByUser, getReportById, deleteReport } = require('../db/database');
 
 const router = express.Router();
@@ -28,8 +28,8 @@ router.get('/:id', requireAuth, (req, res) => {
   });
 });
 
-// GET /api/reports/:id/html  — raw HTML report for iframe
-router.get('/:id/html', requireAuth, (req, res) => {
+// GET /api/reports/:id/html  — raw HTML report for iframe (token via query param)
+router.get('/:id/html', requireAuthQuery, (req, res) => {
   const report = getReportById(req.params.id, req.user.id);
   if (!report) return res.status(404).send('Not found');
   if (!report.html_report) return res.status(404).send('Report HTML not generated yet');
