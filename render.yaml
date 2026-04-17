@@ -3,8 +3,8 @@ services:
     name: ai-testing-agent-backend
     runtime: node
     rootDir: web/backend
-    buildCommand: npm install && cd ../.. && npm install && cd web/backend && npx playwright install chromium || true
-    startCommand: cd ../.. && npx playwright install chromium && cd web/backend && node src/index.js
+    buildCommand: npm install && cd ../.. && npm install --legacy-peer-deps && cd web/backend
+    startCommand: node src/index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -12,15 +12,15 @@ services:
       - key: PORT
         value: 4000
       - key: FRONTEND_URL
-        sync: false          # set in Render dashboard to your Vercel URL
+        sync: false
       - key: JWT_SECRET
-        generateValue: true  # Render auto-generates a secure random value
+        generateValue: true
       - key: JWT_EXPIRES_IN
         value: 24h
       - key: AI_PROVIDER
         value: groq
       - key: GROQ_API_KEY
-        sync: false           # paste your free Groq key in Render dashboard
+        sync: false
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
       - key: DB_PATH
@@ -31,5 +31,3 @@ services:
         value: /tmp/data/screenshots
       - key: MAX_REPORTS_PER_USER
         value: 10
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /tmp/pw-browsers
